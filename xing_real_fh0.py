@@ -1,9 +1,10 @@
+# 호가조회 및 GASP 실시간 계산
 import win32com.client
 import pythoncom
 import time
 import xing_login
 import win32com
-
+import gasp
 
 class XQuery_t2105:
     """
@@ -63,19 +64,38 @@ class XReal_FH0_:
     def OnReceiveRealData(self, tr_code):  # event handler
         """
         이베스트 서버에서 ReceiveRealData 이벤트 받으면 실행되는 event handler
+          order_book = {
+            'bids': [
+                [97, 0.1],
+                [96, 0.2],
+                [95, 6]
+            ],
+            'asks': [
+                [98, 4],
+                [99, 4.6],
+                [100, 4.8],
+            ]
+          }
         """        
         self.count += 1
         hotime = self.GetFieldData("OutBlock", "hotime")
+        bids=[]
+        asks=[]
         for i in range(1, 6):  # 1~5
-            offerho = self.GetFieldData("OutBlock", "offerho"+str(i))
-            bidho   = self.GetFieldData("OutBlock", "bidho"+str(i))
-            offerem = self.GetFieldData("OutBlock", "offerrem"+str(i))
-            bidrem  = self.GetFieldData("OutBlock", "bidrem"+str(i))      
-            print("시간#{0}, 매도: {1}, 매수: {2}, 매수잔량: {3}, 매도잔량: {4}".format(hotime, offerho, bidho, offerem, bidrem))      
-
-        totofferrem = self.GetFieldData("OutBlock", "totofferrem")
-        totbidrem   = self.GetFieldData("OutBlock", "totbidrem")
-        print("매도총수량: {0}, 매수총수량: {1}".format(totofferrem, totbidrem))      
+            offerho = float(self.GetFieldData("OutBlock", "offerho"+str(i)))
+            bidho   = float(self.GetFieldData("OutBlock", "bidho"+str(i)))
+            offerem = float(self.GetFieldData("OutBlock", "offerrem"+str(i)))
+            bidrem  = float(self.GetFieldData("OutBlock", "bidrem"+str(i)))      
+            bids.append([bidho, bidrem])
+            asks.append([offerho, offerem])                        
+            # print(i, '[', bidho,  ',', bidrem, '] [', offerho, ',', offerem,']')
+            # print("시간#{0}, 매도: {1}, 매수: {2}, 매도잔량: {3}, 매수잔량: {4}".format(hotime, offerho, bidho, offerem, bidrem))      
+        order_book ={'bids':bids,'asks':asks}
+        gasp_value = gasp.calculate_gasp(order_book)
+        # totofferrem = self.GetFieldData("OutBlock", "totofferrem")
+        # totbidrem   = self.GetFieldData("OutBlock", "totbidrem")
+        # print("매도총수량: {0}, 매수총수량: {1}".format(totofferrem, totbidrem))      
+        print('시간#{0}, GASP: {1}', hotime, gasp_value)
         print(".... 실시간 TR code => {0}".format(tr_code))
 
     def start(self, futcode):
@@ -111,13 +131,14 @@ if __name__ == "__main__":
 
         while xq_t2105.is_data_received == False:
             pythoncom.PumpWaitingMessages()
+
     def get_real_data():
         xreal = XReal_FH0_.get_instance()
         xreal.start("101QC000")
-
+        
         while xreal.count < 100:
           pythoncom.PumpWaitingMessages()            
-          if xreal.count == 30:
+          if xreal.count == 5:
               xreal.end()  # 실시간 조회 중단.
               time.sleep(5)
               print("---- end -----")
