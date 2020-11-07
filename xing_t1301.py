@@ -68,6 +68,6 @@ if __name__ == "__main__":
 
 
     xsession = xing_login.XSession.get_instance()
-    xsession.api_login('jimsjoo', 'sjoo@422', 'jimsjoo@78445')
+    xsession.api_login()
 
     get_occurs_continue_data()
